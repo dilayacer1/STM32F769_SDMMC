@@ -59,7 +59,37 @@ static void MX_SDMMC1_SD_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void SD_CreateCSV(void)
+{
+    FIL fil;
+    UINT bw;
 
+    // Dosya yoksa oluştur ve header yaz
+    FRESULT res = f_open(&fil, "data.csv", FA_CREATE_NEW | FA_WRITE);
+    if (res == FR_OK)
+    {
+        char header[] = "timestamp,temperature,humidity\r\n";
+        f_write(&fil, header, strlen(header), &bw);
+        f_close(&fil);
+    }
+}
+
+void SD_WriteCSV(float temperature, float humidity, uint32_t timestamp)
+{
+    FIL fil;
+    UINT bw;
+    char line[64];
+
+    // Dosyayı aç (varsa sonuna ekle, yoksa oluştur)
+    FRESULT res = f_open(&fil, "data.csv", FA_OPEN_APPEND | FA_WRITE);
+    if (res == FR_OK)
+    {
+        snprintf(line, sizeof(line), "%lu,%.2f,%.2f\r\n",
+                 timestamp, temperature, humidity);
+        f_write(&fil, line, strlen(line), &bw);
+        f_close(&fil);
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -99,28 +129,37 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_Delay(500);
 
-  FRESULT res = f_mount(&SDFatFS, SDPath, 0);
-  if (res == FR_OK)
-  {
-      FIL fil;
-      UINT bw;
-      res = f_open(&fil, "test.txt", FA_CREATE_ALWAYS | FA_WRITE);
-      if (res == FR_OK)
-      {
-          f_write(&fil, "Merhaba SD Card!\r\n", 18, &bw);
-          f_close(&fil);
-      }
-  }
-  FIL fil2;
-  UINT br;
-  char rbuf[32] = {0};
-  res = f_open(&fil2, "test.txt", FA_READ);
-  if (res == FR_OK)
-  {
-      f_read(&fil2, rbuf, 18, &br);
-      f_close(&fil2);
-      // rbuf breakpoint
-  }
+  FRESULT res;
+
+  res = f_mount(&SDFatFS, SDPath, 1);
+
+  printf("mount=%d\r\n", res);
+  //txt örneği
+//  HAL_Delay(500);
+//
+//  FRESULT res = f_mount(&SDFatFS, SDPath, 0);
+//  if (res == FR_OK)
+//  {
+//      FIL fil;
+//      UINT bw;
+//      res = f_open(&fil, "test.txt", FA_CREATE_ALWAYS | FA_WRITE);
+//      if (res == FR_OK)
+//      {
+//          f_write(&fil, "Merhaba SD Card!\r\n", 18, &bw);
+//          f_close(&fil);
+//      }
+//  }
+//  FIL fil2;
+//  UINT br;
+//  char rbuf[32] = {0};
+//  res = f_open(&fil2, "test.txt", FA_READ);
+//  if (res == FR_OK)
+//  {
+//      f_read(&fil2, rbuf, 18, &br);
+//      f_close(&fil2);
+//      // rbuf breakpoint
+//  }
+  SD_CreateCSV();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -130,6 +169,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	    float temp = 23.5; // sensörden gelecek
+	    float hum  = 65.0;
+	    uint32_t ts = HAL_GetTick();
+
+	    SD_WriteCSV(temp, hum, ts);
+	    HAL_Delay(1000); // her saniye kayıt
   }
   /* USER CODE END 3 */
 }
