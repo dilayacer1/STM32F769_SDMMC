@@ -19,7 +19,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "fatfs.h"
-
+#include "usb_device.h"
+#include "usbd_cdc_if.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -126,8 +127,9 @@ int main(void)
   MX_GPIO_Init();
   MX_SDMMC1_SD_Init();
   MX_FATFS_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
-  HAL_Delay(500);
+  HAL_Delay(1000);
 
   FRESULT res;
 
@@ -160,6 +162,7 @@ int main(void)
 //      // rbuf breakpoint
 //  }
   SD_CreateCSV();
+  uint8_t msg[] = "Test USB OTG\r\n";
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -169,12 +172,14 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	    float temp = 23.5; // sensörden gelecek
-	    float hum  = 65.0;
-	    uint32_t ts = HAL_GetTick();
-
-	    SD_WriteCSV(temp, hum, ts);
-	    HAL_Delay(1000); // her saniye kayıt
+	    CDC_Transmit_FS(msg, sizeof(msg)-1);
+	    HAL_Delay(1000);
+//	    float temp = 23.5; // sensörden gelecek
+//	    float hum  = 65.0;
+//	    uint32_t ts = HAL_GetTick();
+//
+//	    SD_WriteCSV(temp, hum, ts);
+//	    HAL_Delay(1000); // her saniye kayıt
   }
   /* USER CODE END 3 */
 }
@@ -196,10 +201,15 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 15;
+  RCC_OscInitStruct.PLL.PLLN = 144;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 5;
+  RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -209,10 +219,10 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
@@ -241,7 +251,7 @@ static void MX_SDMMC1_SD_Init(void)
   hsd1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
   hsd1.Init.BusWide = SDMMC_BUS_WIDE_1B;
   hsd1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd1.Init.ClockDiv = 50;
+  hsd1.Init.ClockDiv = 4;
   /* USER CODE BEGIN SDMMC1_Init 2 */
 
   /* USER CODE END SDMMC1_Init 2 */
@@ -264,6 +274,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
 
   /*Configure GPIO pin : PA2 */
   GPIO_InitStruct.Pin = GPIO_PIN_2;
